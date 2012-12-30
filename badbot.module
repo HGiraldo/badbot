@@ -33,6 +33,7 @@ function badbot_menu() {
 
   $items['admin/config/system/badbot'] = array(
     'title' => 'Badbot',
+    'description' => 'Configuration page for Badbot module',
     'page callback' => 'badbot_settings',
     'access arguments' => array('administer badbot'),
   );
