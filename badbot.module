@@ -58,7 +58,7 @@ function badbot_permission() {
  */
 function badbot_form_alter(&$form, &$form_state, $form_id) {
   $form_ids = &drupal_static(__FUNCTION__);
-  
+
   if (!isset($form_ids)) {
     $form_ids = array();
   }
@@ -112,10 +112,8 @@ function badbot_form_alter(&$form, &$form_state, $form_id) {
  * Callback for /admin/config/system/badbot
  */
 function badbot_settings() {
-  $form = drupal_get_form('badbot_settings_form');
-  
-  $output = drupal_render($form);
-  
+  $output = array();
+  $output[] = drupal_get_form('badbot_settings_form');
   return $output;
 }
 
