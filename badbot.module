@@ -201,6 +201,7 @@ function badbot_form_validate($form, &$form_state) {
     }
     
     form_set_error('', $error_message);
+    drupal_add_http_header('Status', '403 Forbidden');
   }
 }
 
