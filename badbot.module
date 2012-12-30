@@ -4,6 +4,9 @@
  * Main file for badbot module.
  */
 
+define('BADBOT_FIELD', 'badbot');
+define('BADBOT_VALIDATION_FIELD', 'badbot_validate');
+
 /*----------------------------------------------------------------------------
       CONFIG
 ----------------------------------------------------------------------------*/
@@ -63,44 +66,70 @@ function badbot_form_alter(&$form, &$form_state, $form_id) {
     $form_ids = array();
   }
 
-  if ($form_id == 'user_register_form' && variable_get('badbot_forms_user_registration', FALSE) && variable_get('badbot_forms_salt', FALSE)) {
-    // name of the field which will be used as content for token generation
-      $field = 'mail';
-      $validation_field = $field . '_validate';
+  $patterns = array(
+    '^comment_node_',
+    '^contact_site_form',
+    '^user_register_form'
+  );
+
+  $valid = FALSE;
+  foreach ($patterns as $pattern) {
+    if (preg_match('`' . $pattern . '`', $form_id)) {
+      $valid = TRUE;
+      break;
+    }
+  }
+
+  if ($valid && variable_get('badbot_forms_salt', FALSE)) {
 
     // include our core JS
-      drupal_add_js(drupal_get_path('module', 'badbot') . '/js/badbot.js');
+    drupal_add_js(drupal_get_path('module', 'badbot') . '/js/badbot.js');
+
+    $form['badbot_wrapper'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('SpamBot Fields'),
+      '#description' => t('If you see these fields, something is wrong.'),
+      '#attributes' => array(
+        'class' => array('element-hidden'),
+      ),
+    );
 
     // create validation field which will be populated with the token upon form submission;
-    // this field is hidden from view, so normal users will never see it
-      $form[$validation_field] = array(
-        '#type' => 'textfield',
-        '#prefix' => '<div style="display: none !important;">',
-        '#suffix' => '</div>',
-      );
-
-    // track the names of our field and validation field in $form_state so we can identify
-    // them in the validation handler
-      $form_state['badbot']['field'] = $field;
-      $form_state['badbot']['validation_field'] = $validation_field;
+    // this field is hidden from view, so normal users will never see it.
+    $form['badbot_wrapper'][BADBOT_FIELD] = array(
+      '#type' => 'textfield',
+      '#default_value' => user_password(),
+      '#title' => t('SpamBot seed'),
+      '#description' => t('If you see this field, something is wrong.'),
+    );
+    $form['badbot_wrapper'][BADBOT_VALIDATION_FIELD] = array(
+      '#type' => 'textfield',
+      '#title' => t('SpamBot hash'),
+      '#description' => t('If you see this field, something is wrong.'),
+    );
+    $form['badbot_wrapper']['last_name'] = array(
+      '#type' => 'textfield',
+      '#title' => t('SpamBot catch'),
+      '#description' => t('If you see this field, something is wrong.'),
+    );
 
     // track our form id & relevant fields and save to Drupal.settings for access from our
-    // core JS
-      $form_ids[] = array(
-        'form_id' => $form['#id'],
-        'field' => $field,
-        'validation_field' => str_replace('_', '-', $validation_field),
-      );
+    // core JS.
+    $form_ids[] = array(
+      'form_id' => $form['#id'],
+      'field' => BADBOT_FIELD,
+      'validation_field' => BADBOT_VALIDATION_FIELD,
+    );
 
-      drupal_add_js(array(
-        'badbot' => array(
-          'base_path' => url('', array('absolute' => TRUE)),
-          'forms' => $form_ids,
-        ),
-      ), 'setting');
+    drupal_add_js(array(
+      'badbot' => array(
+        'base_path' => url('', array('absolute' => TRUE)),
+        'forms' => $form_ids,
+      ),
+    ), 'setting');
 
-    // validation handler to check the token
-      $form['#validate'][] = 'badbot_form_validate';
+    // validation handler to check the token.
+    $form['#validate'][] = 'badbot_form_validate';
   }
 }
 
@@ -147,28 +176,22 @@ function badbot_settings_form($form, &$form_state) {
   $form['badbot'] = array(
     '#type' => 'vertical_tabs',
   );
-  
-    $form['badbot']['forms'] = array(
-      '#title' => t('Forms'),
-      '#type' => 'fieldset',
-      '#description' => t('Enable JavaScript detection on select forms.') . '<br/><br />',
-    );
 
-      $form['badbot']['forms']['badbot_forms_salt'] = array(
-        '#title' => t('Salt'),
-        '#type' => 'textfield',
-        '#description' => t("This salt is used during the field hashing process. A salt had been genererated
-                             for you when the module was installed, but you're free to change it. If you 
-                             don't know the consenquences of changing this value, it's best to leave it alone.") .
-                          ' <strong>' . t('Do not disclose this value to anyone. Treat it as you would a password.') . '</strong>' ,
-        '#default_value' => variable_get('badbot_forms_salt'),
-      );
+  $form['badbot']['forms'] = array(
+    '#title' => t('Forms'),
+    '#type' => 'fieldset',
+    '#description' => t('Enable JavaScript detection on select forms.') . '<br/><br />',
+  );
 
-      $form['badbot']['forms']['badbot_forms_user_registration'] = array(
-        '#title' => t('User Registration'),
-        '#type' => 'checkbox',
-        '#default_value' => variable_get('badbot_forms_user_registration', 0),
-      );
+  $form['badbot']['forms']['badbot_forms_salt'] = array(
+    '#title' => t('Salt'),
+    '#type' => 'textfield',
+    '#description' => t("This salt is used during the field hashing process. A salt had been genererated
+                         for you when the module was installed, but you're free to change it. If you 
+                         don't know the consenquences of changing this value, it's best to leave it alone.") .
+                      ' <strong>' . t('Do not disclose this value to anyone. Treat it as you would a password.') . '</strong>' ,
+    '#default_value' => variable_get('badbot_forms_salt'),
+  );
 
   return system_settings_form($form);
 }
@@ -178,28 +201,30 @@ function badbot_settings_form($form, &$form_state) {
  */
 function badbot_form_validate($form, &$form_state) {
   $error = FALSE;
-  
-  $field = $form_state['badbot']['field'];
-  $validation_field = $form_state['badbot']['validation_field'];
-  
+
   // ensure the token is what we expect it to be
-  if (!isset($form_state['values'][$validation_field]) || badbot_js_token($form_state['values'][$field], TRUE) != $form_state['values'][$validation_field]) {
+  if (!isset($form_state['values'][BADBOT_VALIDATION_FIELD])
+    || badbot_js_token($form_state['values'][BADBOT_FIELD], TRUE) != $form_state['values'][BADBOT_VALIDATION_FIELD]) {
     $error = TRUE;
-    watchdog('badbot', 'Blocked form submission.');
+    watchdog('badbot', 'Blocked form submission. (Bad token)');
   }
-  
-  if($error) {
-    if(empty($error_message)) {
-      $error_message = t('Sorry, our spam system has flagged your account. Possible reasons for this include:');
-    
-      $reasons = array();
-      $reasons[] = t('You have Javascript turned off.');
-      $reasons[] = t('Your email or IP address has been flagged as spam by third party services.');
-    
-      $error_message .= '<div class="badbot-block-reasons">' . theme('item_list', array('items' => $reasons)) .'</div>';
-      $error_message .= t('For assistance, please contact the site administrator.');
-    }
-    
+
+  // Was it the empty field?
+  if ($form_state['values']['last_name']) {
+    $error = TRUE;
+    watchdog('badbot', 'Blocked form submission. (Non empty field: @value)', array('@value' => $form_state['values']['last_name']));
+  }
+
+  if ($error) {
+    $error_message = t('Sorry, our spam system has flagged your account. Possible reasons for this include:');
+
+    $reasons = array();
+    $reasons[] = t('You have Javascript turned off.');
+    $reasons[] = t('Your email or IP address has been flagged as spam by third party services.');
+
+    $error_message .= '<div class="badbot-block-reasons">' . theme('item_list', array('items' => $reasons)) .'</div>';
+    $error_message .= t('For assistance, please contact the site administrator.');
+
     form_set_error('', $error_message);
     drupal_add_http_header('Status', '403 Forbidden');
   }
