@@ -60,23 +60,21 @@ function badbot_permission() {
  * Implements hook_form_alter();
  */
 function badbot_form_alter(&$form, &$form_state, $form_id) {
-  $form_ids = &drupal_static(__FUNCTION__);
-
-  if (!isset($form_ids)) {
-    $form_ids = array();
-  }
-
-  $patterns = array(
-    '^comment_node_',
-    '^contact_site_form',
-    '^user_register_form'
-  );
-
+  $forms = variable_get('badbot_forms_ids', FALSE);
   $valid = FALSE;
-  foreach ($patterns as $pattern) {
-    if (preg_match('`' . $pattern . '`', $form_id)) {
-      $valid = TRUE;
-      break;
+
+  if (isset($forms['all'])) {
+    $valid = TRUE;
+  }
+  elseif (in_array($form_id, $forms['exact'])) {
+    $valid = TRUE;
+  }
+  elseif ($forms['pattern']) {
+    foreach ($forms['pattern'] as $key => $value) {
+      if (preg_match('`^' . $value . '$`', $form_id)) {
+        $valid = TRUE;
+        break;
+      }
     }
   }
 
@@ -173,17 +171,7 @@ function badbot_js_token($field_data, $return = FALSE) {
  * @return [type]             [description]
  */
 function badbot_settings_form($form, &$form_state) {
-  $form['badbot'] = array(
-    '#type' => 'vertical_tabs',
-  );
-
-  $form['badbot']['forms'] = array(
-    '#title' => t('Forms'),
-    '#type' => 'fieldset',
-    '#description' => t('Enable JavaScript detection on select forms.') . '<br/><br />',
-  );
-
-  $form['badbot']['forms']['badbot_forms_salt'] = array(
+  $form['badbot_forms_salt'] = array(
     '#title' => t('Salt'),
     '#type' => 'textfield',
     '#description' => t("This salt is used during the field hashing process. A salt had been genererated
@@ -193,7 +181,55 @@ function badbot_settings_form($form, &$form_state) {
     '#default_value' => variable_get('badbot_forms_salt'),
   );
 
+  $badbot_forms_ids_str = '';
+  $badbot_forms_ids = variable_get('badbot_forms_ids', FALSE);
+
+  // The more work we do here, the more efficient hook_form_alter() will be.
+  if (isset($badbot_forms_ids['all'])) {
+    $badbot_forms_ids_str .= "*\n";
+  }
+  if (isset($badbot_forms_ids['exact'])) {
+    $badbot_forms_ids_str .= implode("\n", $badbot_forms_ids['exact']) . "\n";
+  }
+  if (isset($badbot_forms_ids['pattern'])) {
+    $badbot_forms_ids_str .= str_replace('.*', '*', implode("\n", $badbot_forms_ids['pattern']));
+  }
+
+  $common['items'] = array(
+    'contact_site_form',
+    'user_register_form',
+    'comment_node_*',
+  );
+
+  $form['badbot_forms_ids'] = array(
+    '#title' => t('Form Ids'),
+    '#type' => 'textarea',
+    '#description' => t("Type the IDs of the forms that you want Badbot to detect spam on.<br />You can use * to make spambot work on all forms or as a wildecard for partial matching (e.g. node_comment* to catch all comment forms)<br /> Some common IDs you might want to consider: !common_ids", array('!common_ids' => theme('item_list', $common))),
+    '#default_value' => trim($badbot_forms_ids_str),
+    '#element_validate' => array('badbot_forms_ids_validate'),
+    '#required' => TRUE,
+  );
+
   return system_settings_form($form);
+}
+
+function badbot_forms_ids_validate($element, &$form_state, $form) {
+  $original = trim($form_state['values']['badbot_forms_ids']);
+  if ($original != '*') {
+    $ids = explode("\n", str_replace('*', '.*', $original));
+    foreach ($ids as $id) {
+      if ($id == '.*') {
+        $value['all'] = TRUE;
+      }
+      elseif (strpos($id, '*') === FALSE) {
+        $value['exact'][] = $id;
+      }
+      else {
+        $value['pattern'][] = $id;
+      }
+    }
+  }
+  $form_state['values']['badbot_forms_ids'] = $value;
 }
 
 /**
