@@ -85,7 +85,7 @@ function badbot_form_alter(&$form, &$form_state, $form_id) {
 
     $form['badbot_wrapper'] = array(
       '#type' => 'fieldset',
-      '#title' => t('SpamBot Fields'),
+      '#title' => t('Badbot Fields'),
       '#description' => t('If you see these fields, something is wrong.'),
       '#attributes' => array(
         'class' => array('element-hidden'),
@@ -97,17 +97,17 @@ function badbot_form_alter(&$form, &$form_state, $form_id) {
     $form['badbot_wrapper'][BADBOT_FIELD] = array(
       '#type' => 'textfield',
       '#default_value' => user_password(),
-      '#title' => t('SpamBot seed'),
+      '#title' => t('Badbot seed'),
       '#description' => t('If you see this field, something is wrong.'),
     );
     $form['badbot_wrapper'][BADBOT_VALIDATION_FIELD] = array(
       '#type' => 'textfield',
-      '#title' => t('SpamBot hash'),
+      '#title' => t('badbot hash'),
       '#description' => t('If you see this field, something is wrong.'),
     );
     $form['badbot_wrapper']['last_name'] = array(
       '#type' => 'textfield',
-      '#title' => t('SpamBot catch'),
+      '#title' => t('Badbot catch'),
       '#description' => t('If you see this field, something is wrong.'),
     );
 
@@ -204,7 +204,7 @@ function badbot_settings_form($form, &$form_state) {
   $form['badbot_forms_ids'] = array(
     '#title' => t('Form Ids'),
     '#type' => 'textarea',
-    '#description' => t("Type the IDs of the forms that you want Badbot to detect spam on.<br />You can use * to make spambot work on all forms or as a wildecard for partial matching (e.g. node_comment* to catch all comment forms)<br /> Some common IDs you might want to consider: !common_ids", array('!common_ids' => theme('item_list', $common))),
+    '#description' => t("Type the IDs of the forms that you want Badbot to detect spam on.<br />You can use * to make Badbot work on all forms or as a wildcard for partial matching (e.g. node_comment* to catch all comment forms)<br /> Some common IDs you might want to consider: !common_ids", array('!common_ids' => theme('item_list', $common))),
     '#default_value' => trim($badbot_forms_ids_str),
     '#element_validate' => array('badbot_forms_ids_validate'),
     '#required' => TRUE,
