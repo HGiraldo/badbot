@@ -66,10 +66,10 @@ function badbot_form_alter(&$form, &$form_state, $form_id) {
   if (isset($forms['all'])) {
     $valid = TRUE;
   }
-  elseif (in_array($form_id, $forms['exact'])) {
+  elseif (isset($forms['exact']) && in_array($form_id, $forms['exact'])) {
     $valid = TRUE;
   }
-  elseif ($forms['pattern']) {
+  elseif (isset($forms['pattern']) && $forms['pattern']) {
     foreach ($forms['pattern'] as $key => $value) {
       if (preg_match('`^' . $value . '$`', $form_id)) {
         $valid = TRUE;
