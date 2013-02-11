@@ -222,10 +222,10 @@ function badbot_forms_ids_validate($element, &$form_state, $form) {
         $value['all'] = TRUE;
       }
       elseif (strpos($id, '*') === FALSE) {
-        $value['exact'][] = $id;
+        $value['exact'][] = trim($id);
       }
       else {
-        $value['pattern'][] = $id;
+        $value['pattern'][] = trim($id);
       }
     }
   }
